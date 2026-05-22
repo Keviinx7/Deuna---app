@@ -1,0 +1,17 @@
+name: deuna_replica_flutter
+description: Interfaz educativa inspirada en Deuna, creada en Flutter con estructura MVC.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  mobile_scanner: ^7.1.3
+
+flutter:
+  uses-material-design: true
