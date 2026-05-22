@@ -89,6 +89,7 @@ class DemoWallet {
     required IconData icon,
   }) {
     balance += value;
+
     movements.insert(
       0,
       Movement(
@@ -110,7 +111,10 @@ class DemoWallet {
     if (!hasEnough(value)) return false;
 
     balance -= value;
-    points += 5;
+
+    // Nueva regla:
+    // Cada pago o transferencia genera máximo +3 puntos.
+    points += 3;
 
     movements.insert(
       0,
@@ -214,9 +218,12 @@ class _SplashScreenState extends State<SplashScreen> {
 
     Future.delayed(const Duration(seconds: 2), () {
       if (!mounted) return;
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const MainQrScreen()),
+        MaterialPageRoute(
+          builder: (_) => const MainQrScreen(),
+        ),
       );
     });
   }
@@ -243,7 +250,9 @@ class _SplashScreenState extends State<SplashScreen> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(20),
+                  ),
                 ),
               ),
             ),
@@ -469,6 +478,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final DemoWallet wallet = DemoWallet();
+
   DeunaTab selectedTab = DeunaTab.inicio;
   bool showNotification = false;
 
@@ -485,6 +495,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Future.delayed(const Duration(seconds: 1), () {
       if (!mounted) return;
+
       setState(() {
         showNotification = true;
       });
@@ -493,6 +504,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void changeTabBySwipe(DragEndDetails details) {
     final velocity = details.primaryVelocity ?? 0;
+
     if (velocity.abs() < 250) return;
 
     final currentIndex = tabs.indexOf(selectedTab);
@@ -542,7 +554,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showInfoDialog(
       context,
       'Operación realizada',
-      'Se descontó \$${value.toStringAsFixed(2)} de tu saldo.\n\nSaldo actual: ${wallet.formattedBalance}\nGanaste +5 puntos DeunaDrops.',
+      'Se descontó \$${value.toStringAsFixed(2)} de tu saldo.\n\nSaldo actual: ${wallet.formattedBalance}\nGanaste +3 puntos DeunaDrops.',
       Icons.check_circle,
     );
   }
@@ -1273,17 +1285,21 @@ class PromoBanner extends StatelessWidget {
               ],
             ),
           ),
-          Container(
+          SizedBox(
             width: 78,
             height: 62,
-            decoration: BoxDecoration(
-              color: deunaMint,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Icon(
-              Icons.card_giftcard,
-              color: deunaPurple,
-              size: 42,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: deunaMint,
+                borderRadius: BorderRadius.all(
+                  Radius.circular(4),
+                ),
+              ),
+              child: Icon(
+                Icons.card_giftcard,
+                color: deunaPurple,
+                size: 42,
+              ),
             ),
           ),
         ],
@@ -1448,6 +1464,7 @@ class _OperationPageState extends State<OperationPage> {
   @override
   void initState() {
     super.initState();
+
     amountController.text = defaultAmount(widget.title);
     targetController.text = defaultTarget(widget.title);
   }
@@ -1690,7 +1707,7 @@ String operationDescription(String title) {
     case 'Cobrar':
       return 'Esta operación simula un cobro recibido y aumenta tu saldo.';
     default:
-      return 'Esta operación descuenta saldo de tu cuenta principal y suma puntos DeunaDrops.';
+      return 'Esta operación descuenta saldo de tu cuenta principal y suma hasta 3 puntos DeunaDrops.';
   }
 }
 
@@ -1746,8 +1763,10 @@ class DeunaDropsPage extends StatefulWidget {
 class _DeunaDropsPageState extends State<DeunaDropsPage> {
   late int points;
   late DateTime expiresAt;
+
   Timer? timer;
   Duration remaining = const Duration(hours: 24);
+
   int nextDropIndex = 3;
 
   late List<Map<String, dynamic>> visibleDrops;
@@ -1815,6 +1834,7 @@ class _DeunaDropsPageState extends State<DeunaDropsPage> {
   @override
   void initState() {
     super.initState();
+
     points = widget.initialPoints;
     expiresAt = DateTime.now().add(const Duration(hours: 24));
     visibleDrops = List<Map<String, dynamic>>.from(allDrops.take(3));
@@ -1840,6 +1860,7 @@ class _DeunaDropsPageState extends State<DeunaDropsPage> {
     final h = remaining.inHours.toString().padLeft(2, '0');
     final m = remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+
     return '$h:$m:$s';
   }
 
@@ -1848,7 +1869,7 @@ class _DeunaDropsPageState extends State<DeunaDropsPage> {
       showInfoDialog(
         context,
         'DeunaDrop bloqueado',
-        'Necesitas al menos 20 puntos para reclamar.',
+        'Necesitas 20 puntos para reclamar este Drop.\n\nPuntos actuales: $points',
         Icons.lock,
       );
       return;
@@ -1857,7 +1878,9 @@ class _DeunaDropsPageState extends State<DeunaDropsPage> {
     final claimedReward = visibleDrops[index]['reward'];
 
     setState(() {
-      points -= 3;
+      // Nueva regla:
+      // Cada Drop reclamado descuenta 20 puntos.
+      points -= 20;
 
       final newDrop = allDrops[nextDropIndex % allDrops.length];
       visibleDrops[index] = Map<String, dynamic>.from(newDrop);
@@ -1867,7 +1890,7 @@ class _DeunaDropsPageState extends State<DeunaDropsPage> {
     showInfoDialog(
       context,
       'Recompensa reclamada',
-      'Ganaste: $claimedReward\n\nSe liberó un nuevo DeunaDrop cerca de ti.\nPuntos actuales: $points',
+      'Ganaste: $claimedReward\n\nSe descontaron 20 puntos de tu cuenta.\nSe liberó un nuevo DeunaDrop cerca de ti.\n\nPuntos actuales: $points',
       Icons.card_giftcard,
     );
   }
@@ -2223,6 +2246,7 @@ class _CameraQrScannerPageState extends State<CameraQrScannerPage>
           TextButton(
             onPressed: () {
               Navigator.pop(context);
+
               setState(() {
                 scanned = false;
               });
@@ -2456,8 +2480,16 @@ class ScannerFramePainter extends CustomPainter {
     const double s = 22;
     const double l = 58;
 
-    canvas.drawLine(const Offset(s, s), const Offset(s + l, s), corner);
-    canvas.drawLine(const Offset(s, s), const Offset(s, s + l), corner);
+    canvas.drawLine(
+      const Offset(s, s),
+      const Offset(s + l, s),
+      corner,
+    );
+    canvas.drawLine(
+      const Offset(s, s),
+      const Offset(s, s + l),
+      corner,
+    );
 
     canvas.drawLine(
       Offset(size.width - s, s),
@@ -3128,7 +3160,7 @@ class _StorePageState extends State<StorePage> {
     showInfoDialog(
       context,
       'Compra realizada',
-      'Compraste $title por \$${price.toStringAsFixed(2)}.\n\nSaldo actual: ${widget.wallet.formattedBalance}',
+      'Compraste $title por \$${price.toStringAsFixed(2)}.\n\nSaldo actual: ${widget.wallet.formattedBalance}\nGanaste +3 puntos DeunaDrops.',
       Icons.check_circle,
     );
   }
