@@ -146,14 +146,16 @@ class PhoneShell extends StatelessWidget {
           width: double.infinity,
           constraints: const BoxConstraints(maxWidth: 430),
           color: background,
-          child: child,
+          child: SafeArea(
+            child: child,
+          ),
         ),
       ),
     );
   }
 }
 
-class FakeStatusBar extends StatefulWidget {
+class FakeStatusBar extends StatelessWidget {
   final Color color;
   final bool dark;
 
@@ -164,65 +166,8 @@ class FakeStatusBar extends StatefulWidget {
   });
 
   @override
-  State<FakeStatusBar> createState() => _FakeStatusBarState();
-}
-
-class _FakeStatusBarState extends State<FakeStatusBar> {
-  late DateTime now;
-  late Timer timer;
-
-  @override
-  void initState() {
-    super.initState();
-    now = DateTime.now();
-
-    timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        now = DateTime.now();
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    timer.cancel();
-    super.dispose();
-  }
-
-  String get localTime {
-    final hour = now.hour.toString().padLeft(2, '0');
-    final minute = now.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final color = widget.dark ? Colors.black : Colors.white;
-
-    return Container(
-      color: widget.color,
-      padding: const EdgeInsets.fromLTRB(34, 18, 30, 8),
-      height: 58,
-      child: Row(
-        children: [
-          Text(
-            localTime,
-            style: TextStyle(
-              color: color,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const Spacer(),
-          Icon(Icons.signal_cellular_4_bar, color: color, size: 18),
-          const SizedBox(width: 6),
-          Icon(Icons.wifi, color: color, size: 20),
-          const SizedBox(width: 6),
-          Icon(Icons.battery_charging_full, color: color, size: 22),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }
 
@@ -282,7 +227,6 @@ class _SplashScreenState extends State<SplashScreen> {
       background: deunaDarkPurple,
       child: Column(
         children: [
-          FakeStatusBar(color: deunaDarkPurple, dark: false),
           Expanded(
             child: Center(
               child: DeunaLogo(
@@ -322,7 +266,6 @@ class MainQrScreen extends StatelessWidget {
     return PhoneShell(
       child: Column(
         children: [
-          const FakeStatusBar(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -529,6 +472,13 @@ class _HomeScreenState extends State<HomeScreen> {
   DeunaTab selectedTab = DeunaTab.inicio;
   bool showNotification = false;
 
+  final List<DeunaTab> tabs = [
+    DeunaTab.inicio,
+    DeunaTab.beneficios,
+    DeunaTab.billetera,
+    DeunaTab.tu,
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -539,6 +489,25 @@ class _HomeScreenState extends State<HomeScreen> {
         showNotification = true;
       });
     });
+  }
+
+  void changeTabBySwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity.abs() < 250) return;
+
+    final currentIndex = tabs.indexOf(selectedTab);
+
+    if (velocity < 0 && currentIndex < tabs.length - 1) {
+      setState(() {
+        selectedTab = tabs[currentIndex + 1];
+      });
+    }
+
+    if (velocity > 0 && currentIndex > 0) {
+      setState(() {
+        selectedTab = tabs[currentIndex - 1];
+      });
+    }
   }
 
   void showNoMoney(double value) {
@@ -735,49 +704,52 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return PhoneShell(
-      child: Stack(
-        children: [
-          Positioned.fill(child: currentPage),
-          if (selectedTab == DeunaTab.inicio)
-            Positioned(
-              left: 22,
-              right: 22,
-              bottom: 88,
-              child: SizedBox(
-                height: 58,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: deunaPurple,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+      child: GestureDetector(
+        onHorizontalDragEnd: changeTabBySwipe,
+        child: Stack(
+          children: [
+            Positioned.fill(child: currentPage),
+            if (selectedTab == DeunaTab.inicio)
+              Positioned(
+                left: 22,
+                right: 22,
+                bottom: 88,
+                child: SizedBox(
+                  height: 58,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: deunaPurple,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ),
-                  onPressed: openQrPayment,
-                  icon: const Icon(Icons.qr_code_2),
-                  label: const Text(
-                    'Escanear QR',
-                    style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w900,
+                    onPressed: openQrPayment,
+                    icon: const Icon(Icons.qr_code_2),
+                    label: const Text(
+                      'Escanear QR',
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
               ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: BottomNav(
+                selected: selectedTab,
+                onChanged: (tab) {
+                  setState(() {
+                    selectedTab = tab;
+                  });
+                },
+              ),
             ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: BottomNav(
-              selected: selectedTab,
-              onChanged: (tab) {
-                setState(() {
-                  selectedTab = tab;
-                });
-              },
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -807,7 +779,6 @@ class InicioPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const FakeStatusBar(),
         Expanded(
           child: Stack(
             children: [
@@ -1098,7 +1069,7 @@ class HeaderHome extends StatelessWidget {
   }
 }
 
-class BalanceCard extends StatelessWidget {
+class BalanceCard extends StatefulWidget {
   final DemoWallet wallet;
 
   const BalanceCard({
@@ -1107,9 +1078,18 @@ class BalanceCard extends StatelessWidget {
   });
 
   @override
+  State<BalanceCard> createState() => _BalanceCardState();
+}
+
+class _BalanceCardState extends State<BalanceCard> {
+  bool showBalance = true;
+
+  @override
   Widget build(BuildContext context) {
+    final hiddenBalance = '\$••••';
+
     return GestureDetector(
-      onTap: () => showBalanceSheet(context, wallet),
+      onTap: () => showBalanceSheet(context, widget.wallet),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -1144,7 +1124,9 @@ class BalanceCard extends StatelessWidget {
                         Row(
                           children: [
                             Text(
-                              wallet.formattedBalance,
+                              showBalance
+                                  ? widget.wallet.formattedBalance
+                                  : hiddenBalance,
                               style: const TextStyle(
                                 color: deunaText,
                                 fontSize: 38,
@@ -1152,9 +1134,18 @@ class BalanceCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Icon(
-                              Icons.visibility,
-                              size: 28,
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  showBalance = !showBalance;
+                                });
+                              },
+                              child: Icon(
+                                showBalance
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                                size: 28,
+                              ),
                             ),
                           ],
                         ),
@@ -1474,8 +1465,8 @@ class _OperationPageState extends State<OperationPage> {
 
   void confirm() {
     final amount = double.tryParse(
-      amountController.text.trim().replaceAll(',', '.'),
-    ) ??
+          amountController.text.trim().replaceAll(',', '.'),
+        ) ??
         0;
 
     if (amount <= 0) {
@@ -1503,7 +1494,6 @@ class _OperationPageState extends State<OperationPage> {
     return PhoneShell(
       child: Column(
         children: [
-          const FakeStatusBar(),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
@@ -1758,13 +1748,76 @@ class _DeunaDropsPageState extends State<DeunaDropsPage> {
   late DateTime expiresAt;
   Timer? timer;
   Duration remaining = const Duration(hours: 24);
-  final Set<int> claimed = {};
+  int nextDropIndex = 3;
+
+  late List<Map<String, dynamic>> visibleDrops;
+
+  final List<Map<String, dynamic>> allDrops = [
+    {
+      'title': 'Drop Cafetería UPEC',
+      'subtitle': 'Cafetería aliada · 300 m',
+      'description':
+          'Escanea el QR del local y desbloquea una recompensa sorpresa.',
+      'reward': 'Combo sorpresa gratis',
+      'icon': Icons.local_cafe,
+      'color': const Color(0xFFFFD6A5),
+    },
+    {
+      'title': 'Drop Metro UIO',
+      'subtitle': 'Transporte aliado · 650 m',
+      'description': 'Realiza un pago con Deuna y desbloquea un cupón especial.',
+      'reward': 'Cupón de viaje promocional',
+      'icon': Icons.directions_subway,
+      'color': const Color(0xFFD8C2FF),
+    },
+    {
+      'title': 'Drop Tienda Deuna',
+      'subtitle': 'Comercio afiliado · 1.2 km',
+      'description': 'Compra en comercio aliado y participa por premios.',
+      'reward': 'Descuento exclusivo',
+      'icon': Icons.shopping_bag,
+      'color': const Color(0xFFC8F7DC),
+    },
+    {
+      'title': 'Drop Farmacia Aliada',
+      'subtitle': 'Salud y bienestar · 500 m',
+      'description': 'Paga con Deuna y recibe un beneficio promocional.',
+      'reward': 'Cupón de descuento en farmacia',
+      'icon': Icons.local_pharmacy,
+      'color': const Color(0xFFC7E9FF),
+    },
+    {
+      'title': 'Drop Restaurante Centro',
+      'subtitle': 'Comida aliada · 850 m',
+      'description': 'Realiza una compra y desbloquea una promoción limitada.',
+      'reward': 'Bebida gratis en combo',
+      'icon': Icons.restaurant,
+      'color': const Color(0xFFFFCFE1),
+    },
+    {
+      'title': 'Drop Librería Universitaria',
+      'subtitle': 'Comercio académico · 1 km',
+      'description': 'Compra útiles o copias y gana una recompensa sorpresa.',
+      'reward': 'Descuento en impresiones',
+      'icon': Icons.menu_book,
+      'color': const Color(0xFFDFFFD6),
+    },
+    {
+      'title': 'Drop Transporte Local',
+      'subtitle': 'Movilidad aliada · 750 m',
+      'description': 'Usa Deuna para pagar y recibe una promoción temporal.',
+      'reward': 'Viaje promocional',
+      'icon': Icons.directions_bus,
+      'color': const Color(0xFFFFE0A8),
+    },
+  ];
 
   @override
   void initState() {
     super.initState();
     points = widget.initialPoints;
     expiresAt = DateTime.now().add(const Duration(hours: 24));
+    visibleDrops = List<Map<String, dynamic>>.from(allDrops.take(3));
 
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
@@ -1790,7 +1843,7 @@ class _DeunaDropsPageState extends State<DeunaDropsPage> {
     return '$h:$m:$s';
   }
 
-  void claim(int index, String reward) {
+  void claim(int index) {
     if (points < 20) {
       showInfoDialog(
         context,
@@ -1801,58 +1854,29 @@ class _DeunaDropsPageState extends State<DeunaDropsPage> {
       return;
     }
 
+    final claimedReward = visibleDrops[index]['reward'];
+
     setState(() {
-      claimed.add(index);
       points -= 3;
+
+      final newDrop = allDrops[nextDropIndex % allDrops.length];
+      visibleDrops[index] = Map<String, dynamic>.from(newDrop);
+      nextDropIndex++;
     });
 
     showInfoDialog(
       context,
       'Recompensa reclamada',
-      'Ganaste: $reward\n\nPuntos actuales: $points',
+      'Ganaste: $claimedReward\n\nSe liberó un nuevo DeunaDrop cerca de ti.\nPuntos actuales: $points',
       Icons.card_giftcard,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> drops = [
-      {
-        'title': 'Drop Cafetería UPEC',
-        'subtitle': 'Cafetería aliada · 300 m',
-        'description':
-        'Escanea el QR del local y desbloquea una recompensa sorpresa.',
-        'reward': 'Combo sorpresa gratis',
-        'icon': Icons.local_cafe,
-        'color': const Color(0xFFFFD6A5),
-      },
-      {
-        'title': 'Drop Metro UIO',
-        'subtitle': 'Transporte aliado · 650 m',
-        'description':
-        'Realiza un pago con Deuna y desbloquea un cupón especial.',
-        'reward': 'Cupón de viaje promocional',
-        'icon': Icons.directions_subway,
-        'color': const Color(0xFFD8C2FF),
-      },
-      {
-        'title': 'Drop Tienda Deuna',
-        'subtitle': 'Comercio afiliado · 1.2 km',
-        'description':
-        'Compra en comercio aliado y participa por premios especiales.',
-        'reward': 'Descuento exclusivo',
-        'icon': Icons.shopping_bag,
-        'color': const Color(0xFFC8F7DC),
-      },
-    ];
-
     return PhoneShell(
       child: Column(
         children: [
-          const FakeStatusBar(
-            color: deunaPurple,
-            dark: false,
-          ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
@@ -1930,16 +1954,15 @@ class _DeunaDropsPageState extends State<DeunaDropsPage> {
                     style: TextStyle(color: deunaGray),
                   ),
                   const SizedBox(height: 18),
-                  for (int i = 0; i < drops.length; i++)
+                  for (int i = 0; i < visibleDrops.length; i++)
                     DropCard(
-                      title: drops[i]['title'],
-                      subtitle: drops[i]['subtitle'],
-                      description: drops[i]['description'],
-                      reward: drops[i]['reward'],
-                      icon: drops[i]['icon'],
-                      color: drops[i]['color'],
-                      claimed: claimed.contains(i),
-                      onClaim: () => claim(i, drops[i]['reward']),
+                      title: visibleDrops[i]['title'],
+                      subtitle: visibleDrops[i]['subtitle'],
+                      description: visibleDrops[i]['description'],
+                      reward: visibleDrops[i]['reward'],
+                      icon: visibleDrops[i]['icon'],
+                      color: visibleDrops[i]['color'],
+                      onClaim: () => claim(i),
                     ),
                 ],
               ),
@@ -2003,7 +2026,6 @@ class DropCard extends StatelessWidget {
   final String reward;
   final IconData icon;
   final Color color;
-  final bool claimed;
   final VoidCallback onClaim;
 
   const DropCard({
@@ -2014,111 +2036,112 @@ class DropCard extends StatelessWidget {
     required this.reward,
     required this.icon,
     required this.color,
-    required this.claimed,
     required this.onClaim,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: claimed ? deunaMint : deunaLine,
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 350),
+      child: Container(
+        key: ValueKey(title),
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: deunaLine),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x10000000),
+              blurRadius: 10,
+              offset: Offset(0, 3),
+            ),
+          ],
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(18),
+        child: Row(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(
+                icon,
+                color: deunaPurple,
+                size: 34,
+              ),
             ),
-            child: Icon(
-              icon,
-              color: deunaPurple,
-              size: 34,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: deunaText,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: deunaPurple,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      color: deunaGray,
+                      fontSize: 12,
+                      height: 1.25,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    reward,
+                    style: const TextStyle(
+                      color: deunaText,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: deunaText,
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 90,
+              height: 42,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: deunaPurple,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: onClaim,
+                child: const Text(
+                  'Reclamar',
+                  style: TextStyle(
                     fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: deunaPurple,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    color: deunaGray,
                     fontSize: 12,
-                    height: 1.25,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  reward,
-                  style: const TextStyle(
-                    color: deunaText,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 90,
-            height: 42,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: claimed ? deunaMint : deunaPurple,
-                foregroundColor: claimed ? deunaPurple : Colors.white,
-                elevation: 0,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: claimed ? null : onClaim,
-              child: Text(
-                claimed ? 'Listo' : 'Reclamar',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12,
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2174,7 +2197,7 @@ class _CameraQrScannerPageState extends State<CameraQrScannerPage>
     if (scanned) return;
 
     final String? code =
-    capture.barcodes.isNotEmpty ? capture.barcodes.first.rawValue : null;
+        capture.barcodes.isNotEmpty ? capture.barcodes.first.rawValue : null;
 
     if (code == null || code.isEmpty) return;
 
@@ -2234,10 +2257,6 @@ class _CameraQrScannerPageState extends State<CameraQrScannerPage>
       background: Colors.black,
       child: Column(
         children: [
-          const FakeStatusBar(
-            color: deunaPurple,
-            dark: false,
-          ),
           Expanded(
             child: Stack(
               children: [
@@ -2496,7 +2515,6 @@ class BenefitsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const FakeStatusBar(),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.only(bottom: 110),
@@ -2669,7 +2687,6 @@ class WalletPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const FakeStatusBar(),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(22, 24, 22, 110),
@@ -2880,10 +2897,6 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const FakeStatusBar(
-          color: deunaPurple,
-          dark: false,
-        ),
         Expanded(
           child: Column(
             children: [
@@ -3148,7 +3161,6 @@ class _StorePageState extends State<StorePage> {
     return PhoneShell(
       child: Column(
         children: [
-          const FakeStatusBar(),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.fromLTRB(22, 18, 22, 26),
@@ -3254,7 +3266,6 @@ class InfoPage extends StatelessWidget {
     return PhoneShell(
       child: Column(
         children: [
-          const FakeStatusBar(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(22, 18, 22, 26),
@@ -3419,11 +3430,11 @@ class AppTopBar extends StatelessWidget {
 }
 
 void showInfoDialog(
-    BuildContext context,
-    String title,
-    String message,
-    IconData icon,
-    ) {
+  BuildContext context,
+  String title,
+  String message,
+  IconData icon,
+) {
   showDialog(
     context: context,
     builder: (_) => AlertDialog(
@@ -3569,14 +3580,12 @@ class BottomNav extends StatelessWidget {
             icon: Icons.card_giftcard,
             label: 'Beneficios',
             selected: selected == DeunaTab.beneficios,
-            badge: 'Nuevo',
             onTap: () => onChanged(DeunaTab.beneficios),
           ),
           NavItem(
             icon: Icons.account_balance_wallet,
             label: 'Billetera',
             selected: selected == DeunaTab.billetera,
-            badge: 'Nuevo',
             onTap: () => onChanged(DeunaTab.billetera),
           ),
           NavItem(
@@ -3595,7 +3604,6 @@ class NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool selected;
-  final String? badge;
   final VoidCallback onTap;
 
   const NavItem({
@@ -3604,7 +3612,6 @@ class NavItem extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
-    this.badge,
   });
 
   @override
@@ -3615,51 +3622,23 @@ class NavItem extends StatelessWidget {
       onTap: onTap,
       child: SizedBox(
         width: 86,
-        child: Stack(
-          alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  color: color,
-                  size: 28,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: selected ? deunaText : const Color(0xFF667085),
-                    fontSize: 14,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-                  ),
-                ),
-              ],
+            Icon(
+              icon,
+              color: color,
+              size: 28,
             ),
-            if (badge != null)
-              Positioned(
-                top: 7,
-                right: 2,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: deunaMint,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    badge!,
-                    style: const TextStyle(
-                      color: deunaPurple,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? deunaText : const Color(0xFF667085),
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
               ),
+            ),
           ],
         ),
       ),
